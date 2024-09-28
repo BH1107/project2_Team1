@@ -25,10 +25,10 @@ class CostomerModule(L.LightningModule):
     def training_step(self, batch, batch_idx):
         X = batch.get('X')
         y = batch.get('y')
+        y = y.squeeze()
 
         output = self.model(X).squeeze()  # 출력 차원 조정
-        logit = F.softmax(output, dim=-1)
-        self.loss = F.cross_entropy(logit, y)
+        self.loss = F.binary_cross_entropy_with_logits(output, y)
 
         return self.loss
 
@@ -46,9 +46,10 @@ class CostomerModule(L.LightningModule):
 
         X = batch.get('X')
         y = batch.get('y')
+        y = y.squeeze()
 
         output = self.model(X).squeeze()  # 출력 차원 조정
-        self.val_loss = F.cross_entropy(output, y)
+        self.val_loss = F.binary_cross_entropy_with_logits(output, y)
         self.val_losses.append(self.val_loss.item())
 
         return self.val_loss
@@ -72,10 +73,10 @@ class CostomerModule(L.LightningModule):
 
         X = batch.get('X')
         y = batch.get('y')
+        y = y.squeeze()
 
         output = self.model(X).squeeze()
-        logit = F.softmax(output, dim=-1)  # 소프트맥스 활성화 함수 적용
-        test_loss = F.cross_entropy(logit, y)  # 손실 계산
+        test_loss = F.binary_cross_entropy_with_logits(output, y)  # 손실 계산
         self.test_losses.append(test_loss.item())
 
         predictions = (output > 0.5).float()
