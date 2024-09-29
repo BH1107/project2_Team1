@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import lightning as L
-
+import torch
 
 class CostomerModule(L.LightningModule):
     def __init__(
@@ -103,11 +103,12 @@ class CostomerModule(L.LightningModule):
             self.model.parameters(),
             lr=self.learning_rate,
         )
+
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer,
             mode='min',
             factor=0.5,
-            patience=3,
+            patience=5,
         )
 
         return {
