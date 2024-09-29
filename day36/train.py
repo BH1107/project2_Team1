@@ -2,6 +2,7 @@ from src.data import CostomerDataset, CostomerDataModule
 from src.utils import convert_category_into_integer
 from src.model.mlp import Model
 from src.training import CostomerModule
+from imblearn.over_sampling import SMOTE
 
 import pandas as pd
 import numpy as np
@@ -30,15 +31,35 @@ def main(configs):
     costomer, _ = convert_category_into_integer(costomer, ('Churn', 'ServiceArea', 'ChildrenInHH','HandsetRefurbished','HandsetWebCapable','TruckOwner','RVOwner','Homeownership','BuysViaMailOrder','RespondsToMailOffers','OptOutMailings','NonUSTravel','OwnsComputer','HasCreditCard','NewCellphoneUser','NotNewCellphoneUser','OwnsMotorcycle','HandsetPrice','MadeCallToRetentionTeam','CreditRating','PrizmCode','Occupation','MaritalStatus'))
     costomer = costomer.astype(np.float32)
 
+    # 학습, 검증, 테스트 데이터셋 분할
     train, temp = train_test_split(costomer, test_size=0.4, random_state=seed)
     valid, test = train_test_split(temp, test_size=0.5, random_state=seed)
 
-    standard_scaler = StandardScaler()
+    # 학습 데이터에서 특징(X)과 레이블(y) 분리
+    X_train = train.drop(columns=['Churn'])  # 'Churn'은 타겟 레이블로 가정
+    y_train = train['Churn']
 
-    other_columns = ['MonthlyRevenue','MonthlyMinutes','TotalRecurringCharge','DirectorAssistedCalls','OverageMinutes','RoamingCalls','PercChangeMinutes','PercChangeRevenues','DroppedCalls','BlockedCalls','UnansweredCalls','CustomerCareCalls','ThreewayCalls','ReceivedCalls','OutboundCalls','InboundCalls','PeakCallsInOut','OffPeakCallsInOut','DroppedBlockedCalls','CallForwardingCalls','CallWaitingCalls','MonthsInService','UniqueSubs','ActiveSubs','Handsets','HandsetModels','CurrentEquipmentDays','AgeHH1','AgeHH2','RetentionCalls','RetentionOffersAccepted','ReferralsMadeBySubscriber','IncomeGroup','AdjustmentsToCreditRating']
+    # SMOTE 적용
+    smote = SMOTE(random_state=seed)
+    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+
+    # SMOTE 적용 후, 다시 데이터 프레임으로 결합
+    train_resampled = pd.DataFrame(X_train_resampled, columns=X_train.columns)
+    train_resampled['Churn'] = y_train_resampled
+
+    # 검증 및 테스트 데이터에는 SMOTE를 적용하지 않음
+    X_valid = valid.drop(columns=['Churn'])
+    y_valid = valid['Churn']
+    X_test = test.drop(columns=['Churn'])
+    y_test = test['Churn']
+
+    # 스케일링 (SMOTE 적용 후)
+    standard_scaler = StandardScaler()
     
-    train.loc[:, other_columns] = \
-        standard_scaler.fit_transform(train.loc[:, other_columns])
+    other_columns = ['MonthlyRevenue','MonthlyMinutes','TotalRecurringCharge','DirectorAssistedCalls','OverageMinutes','RoamingCalls','PercChangeMinutes','PercChangeRevenues','DroppedCalls','BlockedCalls','UnansweredCalls','CustomerCareCalls','ThreewayCalls','ReceivedCalls','OutboundCalls','InboundCalls','PeakCallsInOut','OffPeakCallsInOut','DroppedBlockedCalls','CallForwardingCalls','CallWaitingCalls','MonthsInService','UniqueSubs','ActiveSubs','Handsets','HandsetModels','CurrentEquipmentDays','AgeHH1','AgeHH2','RetentionCalls','RetentionOffersAccepted','ReferralsMadeBySubscriber','IncomeGroup','AdjustmentsToCreditRating']
+
+    train_resampled.loc[:, other_columns] = \
+        standard_scaler.fit_transform(train_resampled.loc[:, other_columns])
 
     valid.loc[:, other_columns] = \
         standard_scaler.transform(valid.loc[:, other_columns])
@@ -46,7 +67,8 @@ def main(configs):
     test.loc[:, other_columns] = \
         standard_scaler.transform(test.loc[:, other_columns])
 
-    train_dataset = CostomerDataset(train)
+    # Dataset 생성
+    train_dataset = CostomerDataset(train_resampled)
     valid_dataset = CostomerDataset(valid)
     test_dataset = CostomerDataset(test)
 
@@ -56,7 +78,6 @@ def main(configs):
     configs.update({'input_dim': len(costomer.columns)-1})
     model = Model(configs)
 
-
     costomer_module = CostomerModule(
         model=model,
         configs=configs,
@@ -64,7 +85,6 @@ def main(configs):
 
     del configs['output_dim'], configs['seed']
     exp_name = 'costomer'
-    #exp_name = ','.join([f'{key}={value}' for key, value in configs.items()])
     trainer_args = {
         'max_epochs': configs.get('epochs'),
         'callbacks': [
@@ -93,11 +113,6 @@ def main(configs):
     
     torch.save(model.state_dict(), './model/mlp.pth')
     
-    # print('##### Test Result #####')
-    # print('Test Loss : ', trainer[0]['test_loss'])
-    # print('Test Accuracy : ', trainer[0]['test_accuracy'])
-
-
 if __name__ == '__main__':
     device = 'gpu' if torch.cuda.is_available() else 'cpu'
 
