@@ -35,31 +35,31 @@ def main(configs):
     train, temp = train_test_split(costomer, test_size=0.4, random_state=seed)
     valid, test = train_test_split(temp, test_size=0.5, random_state=seed)
 
-    # 학습 데이터에서 특징(X)과 레이블(y) 분리
-    X_train = train.drop(columns=['Churn'])  # 'Churn'은 타겟 레이블로 가정
-    y_train = train['Churn']
+    # # 학습 데이터에서 특징(X)과 레이블(y) 분리
+    # X_train = train.drop(columns=['Churn'])  # 'Churn'은 타겟 레이블로 가정
+    # y_train = train['Churn']
 
-    # SMOTE 적용
-    smote = SMOTE(random_state=seed)
-    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+    # # SMOTE 적용
+    # smote = SMOTE(random_state=seed)
+    # X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
 
-    # SMOTE 적용 후, 다시 데이터 프레임으로 결합
-    train_resampled = pd.DataFrame(X_train_resampled, columns=X_train.columns)
-    train_resampled['Churn'] = y_train_resampled
+    # # SMOTE 적용 후, 다시 데이터 프레임으로 결합
+    # train_resampled = pd.DataFrame(X_train_resampled, columns=X_train.columns)
+    # train_resampled['Churn'] = y_train_resampled
 
-    # 검증 및 테스트 데이터에는 SMOTE를 적용하지 않음
-    X_valid = valid.drop(columns=['Churn'])
-    y_valid = valid['Churn']
-    X_test = test.drop(columns=['Churn'])
-    y_test = test['Churn']
+    # # 검증 및 테스트 데이터에는 SMOTE를 적용하지 않음
+    # X_valid = valid.drop(columns=['Churn'])
+    # y_valid = valid['Churn']
+    # X_test = test.drop(columns=['Churn'])
+    # y_test = test['Churn']
 
     # 스케일링 (SMOTE 적용 후)
     standard_scaler = StandardScaler()
     
     other_columns = ['MonthlyRevenue','MonthlyMinutes','TotalRecurringCharge','DirectorAssistedCalls','OverageMinutes','RoamingCalls','PercChangeMinutes','PercChangeRevenues','DroppedCalls','BlockedCalls','UnansweredCalls','CustomerCareCalls','ThreewayCalls','ReceivedCalls','OutboundCalls','InboundCalls','PeakCallsInOut','OffPeakCallsInOut','DroppedBlockedCalls','CallForwardingCalls','CallWaitingCalls','MonthsInService','UniqueSubs','ActiveSubs','Handsets','HandsetModels','CurrentEquipmentDays','AgeHH1','AgeHH2','RetentionCalls','RetentionOffersAccepted','ReferralsMadeBySubscriber','IncomeGroup','AdjustmentsToCreditRating']
 
-    train_resampled.loc[:, other_columns] = \
-        standard_scaler.fit_transform(train_resampled.loc[:, other_columns])
+    train.loc[:, other_columns] = \
+        standard_scaler.fit_transform(train.loc[:, other_columns])
 
     valid.loc[:, other_columns] = \
         standard_scaler.transform(valid.loc[:, other_columns])
@@ -68,7 +68,7 @@ def main(configs):
         standard_scaler.transform(test.loc[:, other_columns])
 
     # Dataset 생성
-    train_dataset = CostomerDataset(train_resampled)
+    train_dataset = CostomerDataset(train)
     valid_dataset = CostomerDataset(valid)
     test_dataset = CostomerDataset(test)
 
